@@ -1,74 +1,72 @@
+import os
 import streamlit as st
+from dotenv import load_dotenv
 from langchain.agents import initialize_agent, Tool
 from langchain.chat_models import ChatOpenAI
-import requests
 
-# Set up API keys
-openai_api_key = "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"
-google_api_key = "AIzaSyBlKL7gdT7HuzIVszBnhZ9qZY8h_4auyZM"
-google_cse_id = "6280b1ce3068249a8"
+# Load environment variables from .env file
+load_dotenv()
 
-# Initialize the OpenAI Chat Model (GPT-4)
-llm = ChatOpenAI(
-    model="gpt-4",  # Use "gpt-3.5-turbo" if GPT-4 is unavailable
-    temperature=0.7,
-    openai_api_key=openai_api_key
-)
+# Retrieve API keys from environment variables
+openai_api_key = os.getenv("OPENAI_API_KEY")
+google_api_key = os.getenv("GOOGLE_API_KEY")
+google_cse_id = os.getenv("GOOGLE_CSE_ID")
 
-# Define the Google Search Tool
-def google_search_tool(query):
-    """Use Google Custom Search API to fetch search results."""
-    url = "https://www.googleapis.com/customsearch/v1"
-    params = {
-        "key": google_api_key,
-        "cx": google_cse_id,
-        "q": query,
-        "num": 3  # Limit to top 3 results
-    }
-    response = requests.get(url, params=params)
-    if response.status_code == 200:
-        results = response.json().get("items", [])
-        if results:
-            return "\n".join([f"{item['title']}: {item['link']}" for item in results])
-        else:
-            return "No results found."
-    else:
-        return f"Failed to fetch results: {response.text}"
+# Validate API keys
+if not openai_api_key or not google_api_key or not google_cse_id:
+    st.error("API keys are not properly configured. Please check your environment variables.")
+    st.stop()
 
-# Define tools for the agent
+# Define the search tool using Google Search API
+def google_search_tool(query: str) -> str:
+    import requests
+
+    # Make a request to Google Search API
+    url = f"https://www.googleapis.com/customsearch/v1?q={query}&key={google_api_key}&cx={google_cse_id}"
+    response = requests.get(url)
+
+    # Handle errors or return search results
+    if response.status_code != 200:
+        return f"Error: Unable to fetch results from Google Search API. {response.text}"
+    results = response.json().get("items", [])
+    if not results:
+        return "No results found."
+    
+    # Return the first result as an example
+    return results[0].get("snippet", "No description available.")
+
+# Initialize LangChain tools
 tools = [
     Tool(
         name="Google Search",
         func=google_search_tool,
-        description="Search the web for information."
+        description="Use this tool to search the web using Google Custom Search API."
     )
 ]
 
-# Create the LangChain agent
+# Initialize the OpenAI-powered agent
+llm = ChatOpenAI(model="gpt-4", temperature=0.7, openai_api_key=openai_api_key)
 agent = initialize_agent(tools, llm, agent_type="zero-shot-react-description", verbose=True)
 
-# Streamlit UI
+# Streamlit app UI
 st.title("AI Agent with LangChain")
-st.markdown(
-    """
-    ### Welcome to your AI-powered assistant!
-    - Enter any question or query.
-    - The agent will use OpenAI GPT-4 and Google Search to provide an answer.
-    """
-)
+st.markdown("""
+### Welcome to your AI-powered assistant!
+- Enter any question or query.
+- The agent will use OpenAI GPT-4 and Google Search to provide an answer.
+""")
 
-# Input text box
-user_query = st.text_input("Enter your question:")
+# Input field
+user_input = st.text_input("Enter your question:", "")
 
 if st.button("Submit"):
-    if user_query.strip() == "":
-        st.warning("Please enter a question.")
-    else:
-        with st.spinner("Thinking..."):
+    if user_input.strip():
+        with st.spinner("Processing your request..."):
             try:
-                # Run the agent with the user's query
-                agent_response = agent.run(user_query)
-                st.success("Response:")
-                st.write(agent_response)
+                response = agent.run(user_input)
+                st.success("Here is the response:")
+                st.write(response)
             except Exception as e:
-                st.error(f"An error occurred: {e}")
+                st.error(f"An error occurred: {str(e)}")
+    else:
+        st.warning("Please enter a question before submitting.")
