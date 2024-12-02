@@ -4,7 +4,7 @@ from langchain.chat_models import ChatOpenAI
 import requests
 
 # Set up API keys
-openai_api_key = "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"
+openai_api_key = "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"
 google_api_key = "AIzaSyBlKL7gdT7HuzIVszBnhZ9qZY8h_4auyZM"
 google_cse_id = "6280b1ce3068249a8"
 
