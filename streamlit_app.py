@@ -45,7 +45,7 @@ tools = [
 ]
 
 # Initialize the OpenAI-powered agent
-llm = ChatOpenAI(model="gpt-3.5-turbo", temperature=0.7, openai_api_key=openai_api_key)
+llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.7, openai_api_key=openai_api_key)
 agent = initialize_agent(tools, llm, agent_type="zero-shot-react-description", verbose=True)
 
 # Streamlit app UI
