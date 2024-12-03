@@ -13,7 +13,7 @@ supabase: Client = create_client(supabase_url, supabase_key)
 
 # Initialize OpenAI LLM
 llm = ChatOpenAI(
-    model="gpt-4o-mini"
+    model="gpt-4o-mini",  # Corrected the missing comma
     openai_api_key=openai_api_key,
     temperature=0.5
 )
