@@ -1,72 +1,84 @@
-import os
 import streamlit as st
-from dotenv import load_dotenv
-from langchain.agents import initialize_agent, Tool
 from langchain.chat_models import ChatOpenAI
+from langchain.agents import initialize_agent, Tool
+from supabase import create_client, Client
 
-# Load environment variables from .env file
-load_dotenv()
+# Load secrets from Streamlit Secrets Manager
+openai_api_key = st.secrets["OPENAI_API_KEY"]
+supabase_url = st.secrets["SUPABASE_URL"]
+supabase_key = st.secrets["SUPABASE_KEY"]
 
-# Retrieve API keys from environment variables
-openai_api_key = os.getenv("OPENAI_API_KEY")
-google_api_key = os.getenv("GOOGLE_API_KEY")
-google_cse_id = os.getenv("GOOGLE_CSE_ID")
+# Initialize Supabase client
+supabase: Client = create_client(supabase_url, supabase_key)
 
-# Validate API keys
-if not openai_api_key or not google_api_key or not google_cse_id:
-    st.error("API keys are not properly configured. Please check your environment variables.")
-    st.stop()
+# Initialize OpenAI LLM
+llm = ChatOpenAI(
+    model="gpt-4o-mini"
+    openai_api_key=openai_api_key,
+    temperature=0.5
+)
 
-# Define the search tool using Google Search API
-def google_search_tool(query: str) -> str:
-    import requests
+# System message for guiding the chatbot
+system_message = """
+You are an AI Customer Service Representative for Solynta Energy.
+You handle payment and system-related inquiries for existing customers.
+Always verify the customer's phone number and fetch their details before proceeding.
+"""
 
-    # Make a request to Google Search API
-    url = f"https://www.googleapis.com/customsearch/v1?q={query}&key={google_api_key}&cx={google_cse_id}"
-    response = requests.get(url)
+# Function to query customer data from Supabase
+def verify_customer(phone_number):
+    """
+    Query the Supabase database to verify if a customer exists.
+    """
+    response = supabase.table("customers").select("*").eq("phone_number", phone_number).execute()
+    if response.data:
+        customer = response.data[0]
+        name = customer["customer_name"]
+        account_status = customer["account_status"]
+        token_status = customer["token_status"]
+        return f"Customer found: {name}. Account status: {account_status}, Token status: {token_status}."
+    else:
+        return "No customer found with this phone number. Please check and try again."
 
-    # Handle errors or return search results
-    if response.status_code != 200:
-        return f"Error: Unable to fetch results from Google Search API. {response.text}"
-    results = response.json().get("items", [])
-    if not results:
-        return "No results found."
-    
-    # Return the first result as an example
-    return results[0].get("snippet", "No description available.")
-
-# Initialize LangChain tools
+# Define tools for the agent
 tools = [
     Tool(
-        name="Google Search",
-        func=google_search_tool,
-        description="Use this tool to search the web using Google Custom Search API."
+        name="Verify Customer",
+        func=verify_customer,
+        description="Verify if a user is an existing customer using their phone number."
     )
 ]
 
-# Initialize the OpenAI-powered agent
-llm = ChatOpenAI(model="gpt-4o-mini", temperature=0.7, openai_api_key=openai_api_key)
-agent = initialize_agent(tools, llm, agent_type="zero-shot-react-description", verbose=True)
+# Create the LangChain agent
+agent = initialize_agent(
+    tools,
+    llm,
+    agent_type="zero-shot-react-description",
+    verbose=True,
+    system_prompt=system_message
+)
 
-# Streamlit app UI
-st.title("AI Agent with LangChain")
-st.markdown("""
-### Welcome to your AI-powered assistant!
-- Enter any question or query.
-- The agent will use OpenAI GPT-4 and Google Search to provide an answer.
-""")
+# Streamlit app interface
+st.title("Solynta Energy Customer Service")
+st.write("This chatbot assists existing customers with payment and system-related inquiries.")
 
-# Input field
-user_input = st.text_input("Enter your question:", "")
+# Input for customer phone number
+phone_number = st.text_input("Enter your registered phone number:")
 
+# Input for customer query
+query = st.text_input("Enter your question or issue:")
 if st.button("Submit"):
-    if user_input.strip():
-        with st.spinner("Processing your request..."):
+    if phone_number:
+        verification_result = verify_customer(phone_number)
+        st.write(verification_result)
+        if "Customer found" in verification_result:
             try:
-                response = agent.run(user_input)
-                st.success("Here is the response:")
+                response = agent.run(query)
+                st.write("Response:")
                 st.write(response)
             except Exception as e:
-                st.error(f"An error occurred: {str(e)}")
+                st.error(f"An error occurred: {e}")
+        else:
+            st.error("Unable to verify your account. Please provide the correct phone number.")
     else:
-        st.warning("Please enter a question before submitting.")
+        st.error("Please provide your registered phone number.")
