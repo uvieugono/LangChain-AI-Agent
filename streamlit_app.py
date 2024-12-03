@@ -91,7 +91,7 @@ SUPABASE_KEY = "your-service-role-key"
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
 def test_supabase_connection():
-    response = supabase.table("customers").select("*").execute()
+    response = supabase.table("customer data").select("*").execute()
     return response.data if response.data else "No data found or connection failed!"
 
 print(test_supabase_connection())
