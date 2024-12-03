@@ -82,3 +82,16 @@ if st.button("Submit"):
             st.error("Unable to verify your account. Please provide the correct phone number.")
     else:
         st.error("Please provide your registered phone number.")
+
+from supabase import create_client
+
+SUPABASE_URL = "https://your-project.supabase.co"
+SUPABASE_KEY = "your-service-role-key"
+
+supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+
+def test_supabase_connection():
+    response = supabase.table("customers").select("*").execute()
+    return response.data if response.data else "No data found or connection failed!"
+
+print(test_supabase_connection())
