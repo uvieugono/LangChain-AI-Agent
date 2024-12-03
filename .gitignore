@@ -1,7 +1,44 @@
 # Exclude environment files
 .env
+.env.local
+*.env
 
 # Exclude Python cache files
 __pycache__/
 *.pyc
 *.pyo
+*.pyd
+*.pdb
+
+# Exclude virtual environment directories
+venv/
+env/
+.virtualenv/
+*.egg-info/
+.eggs/
+
+# Exclude development and IDE-specific files
+.idea/
+.vscode/
+*.log
+*.sqlite3
+*.db
+
+# Exclude compiled and packaged files
+build/
+dist/
+*.egg
+
+# Exclude Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+
+# Exclude temporary files
+*.tmp
+*.temp
+*.bak
+*.swp
+*.swo
+
+# Exclude operating system files
+.DS_Store
+Thumbs.db
